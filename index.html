@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Time Tracker">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>Time Tracker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #ffffff;
+      --bg-secondary: #f5f5f4;
+      --bg-tertiary: #eeece8;
+      --text-primary: #1a1a18;
+      --text-secondary: #6b6b67;
+      --border: rgba(0,0,0,0.12);
+      --border-md: rgba(0,0,0,0.25);
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --green: #1D9E75;
+      --green-dark: #0F6E56;
+      --red: #E24B4A;
+      --amber: #BA7517;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary: #1c1c1a;
+        --bg-secondary: #252522;
+        --bg-tertiary: #2e2e2b;
+        --text-primary: #f0ede8;
+        --text-secondary: #9a9a94;
+        --border: rgba(255,255,255,0.1);
+        --border-md: rgba(255,255,255,0.22);
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .app { max-width: 420px; margin: 0 auto; background: var(--bg-primary); min-height: 100vh; padding-bottom: 72px; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* NAV */
+    .nav {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 420px;
+      background: var(--bg-primary); border-top: 0.5px solid var(--border);
+      display: flex; z-index: 100;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .nav-btn {
+      flex: 1; padding: 12px 4px 10px; background: none; border: none;
+      cursor: pointer; font-size: 11px; color: var(--text-secondary);
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      font-family: inherit;
+    }
+    .nav-btn.active { color: var(--text-primary); }
+    .nav-icon { font-size: 20px; }
+
+    /* HEADER */
+    .header { padding: 20px 16px 12px; border-bottom: 0.5px solid var(--border); }
+    .header h2 { font-size: 18px; font-weight: 500; }
+    .header p { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
+    .section { padding: 16px; }
+    .section-title { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+
+    /* TIMER */
+    .timer-card {
+      background: var(--bg-secondary); border-radius: var(--radius-lg);
+      padding: 28px 16px; text-align: center; margin-bottom: 16px;
+    }
+    .timer-display {
+      font-size: 52px; font-weight: 500; letter-spacing: 2px;
+      font-variant-numeric: tabular-nums; color: var(--text-primary);
+    }
+    .timer-cat { font-size: 14px; color: var(--text-secondary); margin-top: 6px; }
+    .timer-running .timer-display { color: var(--green); }
+    .timer-running .timer-cat { color: var(--green-dark); }
+
+    /* CAT GRID */
+    .cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .cat-btn {
+      padding: 12px 10px; border: 0.5px solid var(--border); border-radius: var(--radius-md);
+      background: var(--bg-primary); cursor: pointer; text-align: left; font-family: inherit;
+      transition: background .1s;
+    }
+    .cat-btn:active { background: var(--bg-secondary); }
+    .cat-btn.selected { border-width: 1.5px; }
+    .cat-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .cat-name { font-size: 13px; font-weight: 500; color: var(--text-primary); margin-top: 4px; }
+
+    /* SUB CHIPS */
+    .sub-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+    .sub-chip {
+      padding: 5px 12px; border: 0.5px solid var(--border); border-radius: 20px;
+      font-size: 12px; cursor: pointer; background: var(--bg-primary);
+      color: var(--text-secondary); font-family: inherit;
+    }
+    .sub-chip.active { background: var(--bg-secondary); color: var(--text-primary); border-color: var(--border-md); }
+
+    /* BUTTONS */
+    .btn { width: 100%; padding: 14px; border-radius: var(--radius-md); border: none; font-size: 15px; font-weight: 500; cursor: pointer; font-family: inherit; }
+    .btn-stop { background: var(--red); color: #fff; }
+    .btn-start { background: var(--text-primary); color: var(--bg-primary); }
+    .btn-start:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* ENTRIES */
+    .entries { display: flex; flex-direction: column; gap: 6px; }
+    .entry { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg-secondary); border-radius: var(--radius-md); }
+    .entry-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .entry-info { flex: 1; }
+    .entry-cat { font-size: 13px; font-weight: 500; }
+    .entry-time { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+    .entry-dur { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+
+    /* DASHBOARD */
+    .dash-period { display: flex; gap: 6px; padding: 12px 16px; border-bottom: 0.5px solid var(--border); flex-wrap: wrap; }
+    .period-btn {
+      padding: 6px 14px; border: 0.5px solid var(--border); border-radius: 20px;
+      font-size: 12px; cursor: pointer; background: none; color: var(--text-secondary); font-family: inherit;
+    }
+    .period-btn.active { background: var(--text-primary); color: var(--bg-primary); border-color: transparent; }
+    .custom-row { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-bottom: 0.5px solid var(--border); background: var(--bg-secondary); }
+    .custom-row input { width: 64px; padding: 6px 8px; border: 0.5px solid var(--border-md); border-radius: var(--radius-md); font-size: 13px; background: var(--bg-primary); color: var(--text-primary); font-family: inherit; }
+    .custom-row label { font-size: 13px; color: var(--text-secondary); }
+
+    .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .metric { background: var(--bg-secondary); border-radius: var(--radius-md); padding: 12px; }
+    .metric-label { font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; }
+    .metric-val { font-size: 22px; font-weight: 500; }
+    .metric-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+    .bar-chart { margin-bottom: 16px; }
+    .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .bar-label { font-size: 12px; color: var(--text-secondary); width: 70px; flex-shrink: 0; text-align: right; }
+    .bar-track { flex: 1; height: 20px; background: var(--bg-secondary); border-radius: 4px; overflow: hidden; position: relative; }
+    .bar-fill { height: 100%; border-radius: 4px; }
+    .bar-target { position: absolute; top: 0; bottom: 0; width: 1.5px; background: var(--text-primary); opacity: 0.25; }
+    .bar-val { font-size: 11px; color: var(--text-secondary); width: 32px; flex-shrink: 0; text-align: right; }
+    .bar-delta { font-size: 11px; width: 38px; flex-shrink: 0; text-align: right; }
+    .pos { color: var(--green); } .neg { color: var(--red); }
+
+    .donut-wrap { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; padding: 12px; background: var(--bg-secondary); border-radius: var(--radius-lg); }
+    .legend { flex: 1; }
+    .legend-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .legend-sq { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+    .legend-name { font-size: 12px; color: var(--text-secondary); flex: 1; }
+    .legend-pct { font-size: 12px; font-weight: 500; }
+
+    /* SETTINGS */
+    .settings-group { margin-bottom: 20px; }
+    .settings-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+    .settings-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-key { font-size: 14px; }
+    .settings-val { font-size: 14px; color: var(--text-secondary); }
+
+    .weekly-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; margin-bottom: 16px; }
+    .day-cell { background: var(--bg-secondary); border-radius: var(--radius-md); padding: 6px 3px; text-align: center; }
+    .day-cell.today { border: 1px solid var(--border-md); }
+    .day-name { font-size: 10px; color: var(--text-secondary); }
+    .day-val { font-size: 10px; font-weight: 500; margin-top: 2px; color: var(--green); line-height: 1.3; }
+    .day-val.over { color: var(--red); }
+
+    .cat-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 0.5px solid var(--border); border-radius: var(--radius-md); background: var(--bg-primary); margin-bottom: 6px; }
+    .cat-item-info { flex: 1; min-width: 0; }
+    .cat-item-name { font-size: 13px; font-weight: 500; }
+    .cat-item-goal { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+    .edit-btn { font-size: 12px; color: var(--text-secondary); background: none; border: 0.5px solid var(--border); border-radius: 4px; padding: 4px 8px; cursor: pointer; flex-shrink: 0; font-family: inherit; }
+
+    /* MODAL */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .modal { background: var(--bg-primary); border-radius: var(--radius-lg); padding: 20px 16px 24px; width: 100%; max-width: 390px; max-height: 88vh; overflow-y: auto; }
+    .modal-title { font-size: 16px; font-weight: 500; margin-bottom: 4px; }
+    .modal-sub { font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; }
+    .modal-divider { border: none; border-top: 0.5px solid var(--border); margin: 16px 0; }
+    .modal-btns { display: flex; gap: 8px; margin-top: 16px; }
+    .modal-btns button { flex: 1; padding: 12px; border-radius: var(--radius-md); font-size: 14px; cursor: pointer; border: 0.5px solid var(--border-md); font-family: inherit; }
+    .modal-btns .confirm { background: var(--text-primary); color: var(--bg-primary); border-color: transparent; }
+    .modal-btns .cancel { background: none; color: var(--text-secondary); }
+
+    .sched-opts { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .sched-radio { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 0.5px solid var(--border); border-radius: var(--radius-md); cursor: pointer; }
+    .sched-radio.active { border-color: var(--border-md); background: var(--bg-secondary); }
+    .sched-radio input { width: 16px; height: 16px; flex-shrink: 0; accent-color: var(--text-primary); }
+    .sched-rl { font-size: 13px; }
+    .sched-rs { font-size: 11px; color: var(--text-secondary); }
+
+    .hm-row { display: flex; align-items: center; gap: 5px; margin-bottom: 10px; }
+    .hm-inp { width: 44px; padding: 7px 4px; border: 0.5px solid var(--border-md); border-radius: var(--radius-md); font-size: 13px; text-align: center; background: var(--bg-primary); color: var(--text-primary); font-family: inherit; }
+    .hm-lbl { font-size: 12px; color: var(--text-secondary); flex-shrink: 0; }
+    .rem-hint { font-size: 11px; color: var(--text-secondary); margin-left: 4px; }
+    .rem-hint.warn { color: var(--amber); }
+    .err-msg { font-size: 12px; color: var(--red); margin-top: -6px; margin-bottom: 8px; display: none; }
+
+    .day-goals { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+    .dg-row { display: flex; align-items: center; }
+    .dg-label { font-size: 12px; color: var(--text-secondary); width: 30px; flex-shrink: 0; }
+    .dg-inputs { display: flex; align-items: center; gap: 4px; flex: 1; }
+    .dg-inp { width: 38px; padding: 5px 3px; border: 0.5px solid var(--border-md); border-radius: var(--radius-md); font-size: 12px; text-align: center; background: var(--bg-primary); color: var(--text-primary); font-family: inherit; }
+    .dg-lbl { font-size: 11px; color: var(--text-secondary); }
+    .dg-rem { font-size: 10px; color: var(--text-secondary); margin-left: 3px; }
+    .dg-err { font-size: 10px; color: var(--red); display: none; margin-left: 3px; }
+
+    .subs-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; min-height: 24px; }
+    .sub-tag { display: flex; align-items: center; gap: 3px; padding: 4px 8px; border: 0.5px solid var(--border); border-radius: 20px; font-size: 12px; background: var(--bg-secondary); color: var(--text-secondary); }
+    .sub-tag-del { background: none; border: none; cursor: pointer; font-size: 15px; color: var(--text-secondary); line-height: 1; padding: 0; }
+    .sub-tag-del:hover { color: var(--red); }
+    .add-sub-row { display: flex; gap: 6px; }
+    .add-sub-input { flex: 1; padding: 7px 10px; border: 0.5px solid var(--border-md); border-radius: var(--radius-md); font-size: 13px; background: var(--bg-primary); color: var(--text-primary); font-family: inherit; }
+    .add-sub-btn { padding: 7px 12px; border: 0.5px solid var(--border-md); border-radius: var(--radius-md); font-size: 13px; cursor: pointer; background: none; color: var(--text-primary); font-family: inherit; }
+
+    .resume-btns { display: flex; flex-direction: column; gap: 8px; }
+    .resume-btns button { padding: 12px; border-radius: var(--radius-md); font-size: 14px; cursor: pointer; border: 0.5px solid var(--border-md); background: none; color: var(--text-primary); text-align: left; font-family: inherit; }
+    .resume-btns button:active { background: var(--bg-secondary); }
+
+    .add-cat-btn { margin-top: 10px; width: 100%; padding: 10px; border: 0.5px dashed var(--border-md); border-radius: var(--radius-md); background: none; cursor: pointer; font-size: 13px; color: var(--text-secondary); font-family: inherit; }
+
+    input[type=range] { width: 100%; accent-color: var(--text-primary); }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TIMER -->
+  <div id="screen-timer" class="screen active">
+    <div class="header"><h2>Time tracker</h2><p id="today-date"></p></div>
+    <div class="section">
+      <div class="timer-card" id="timer-card">
+        <div class="timer-display" id="timer-display">00:00:00</div>
+        <div class="timer-cat" id="timer-cat-label">Select a category to start</div>
+      </div>
+      <div id="running-controls" style="display:none;margin-bottom:16px">
+        <button class="btn btn-stop" onclick="stopTimer()">Stop</button>
+      </div>
+      <div id="start-controls">
+        <p class="section-title">Category</p>
+        <div class="cat-grid" id="cat-grid"></div>
+        <div id="sub-section" style="display:none">
+          <p class="section-title">Sub-category (optional)</p>
+          <div class="sub-row" id="sub-row"></div>
+        </div>
+        <button class="btn btn-start" id="start-btn" onclick="startTimer()" disabled>Start timer</button>
+      </div>
+      <div style="margin-top:20px">
+        <p class="section-title" style="margin-bottom:8px">Today's log</p>
+        <div class="entries" id="entries-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="screen-dashboard" class="screen">
+    <div class="header"><h2>Dashboard</h2></div>
+    <div class="dash-period">
+      <button class="period-btn active" onclick="setPeriod('day',this)">Today</button>
+      <button class="period-btn" onclick="setPeriod('week',this)">This week</button>
+      <button class="period-btn" onclick="setPeriod('month',this)">This month</button>
+      <button class="period-btn" onclick="setPeriod('custom',this)">Custom</button>
+    </div>
+    <div class="custom-row" id="custom-row" style="display:none">
+      <label>Last</label>
+      <input type="number" id="custom-days" min="1" max="9999" value="30" oninput="updateCustom()">
+      <label>days</label>
+    </div>
+    <div class="section">
+      <div class="metric-grid">
+        <div class="metric"><div class="metric-label" id="m-label">Tracked today</div><div class="metric-val" id="m-tracked">0h</div><div class="metric-sub" id="m-sub">of 24h</div></div>
+        <div class="metric"><div class="metric-label">Goals met</div><div class="metric-val" id="m-goals">0/8</div><div class="metric-sub" id="m-goals-sub">categories</div></div>
+      </div>
+      <p class="section-title">Time vs objectives</p>
+      <div class="bar-chart" id="bar-chart"></div>
+      <p class="section-title">Distribution</p>
+      <div class="donut-wrap">
+        <canvas id="donut" width="110" height="110" role="img" aria-label="Time distribution">Time distribution.</canvas>
+        <div class="legend" id="donut-legend"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="screen-settings" class="screen">
+    <div class="header"><h2>Settings</h2></div>
+    <div class="section">
+      <div class="settings-group">
+        <div class="settings-label">Timer</div>
+        <div class="settings-row">
+          <span class="settings-key">Inactivity reminder</span>
+          <span class="settings-val" id="s-reminder-val">2h</span>
+        </div>
+        <input type="range" min="1" max="32" value="8" step="1" id="s-reminder" oninput="updateReminder(this.value)" style="margin-top:8px">
+        <p style="font-size:11px;color:var(--text-secondary);margin-top:4px">From 15 min to 8h, in 15-min steps</p>
+      </div>
+      <div class="settings-group">
+        <div class="settings-label">Categories & goals</div>
+        <p style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Planned per day</p>
+        <div class="weekly-grid" id="weekly-grid"></div>
+        <div id="settings-cat-list"></div>
+        <button class="add-cat-btn" onclick="showAddCat()">+ Add category</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <button class="nav-btn active" onclick="showScreen('timer',this)"><span class="nav-icon">⏱</span>Timer</button>
+    <button class="nav-btn" onclick="showScreen('dashboard',this)"><span class="nav-icon">📊</span>Dashboard</button>
+    <button class="nav-btn" onclick="showScreen('settings',this)"><span class="nav-icon">⚙️</span>Settings</button>
+  </nav>
+</div>
+
+<!-- MODALS -->
+<div id="modal-resume" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <div class="modal-title" id="resume-title">Still tracking?</div>
+    <div class="modal-sub" id="resume-q"></div>
+    <div class="resume-btns">
+      <button onclick="resumeKeep()">Yes, keep it running</button>
+      <button onclick="resumeStop()">No, stop it now</button>
+      <button onclick="resumeAdjust()">Stop and adjust duration</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-edit" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <div class="modal-title" id="edit-title">Edit</div>
+    <div class="modal-sub">Goals & sub-categories</div>
+    <p style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Daily goal</p>
+    <div class="sched-opts">
+      <label class="sched-radio active" id="sched-same-lbl">
+        <input type="radio" name="sched" value="same" checked onchange="setSchedMode('same')">
+        <div><div class="sched-rl">Same every day</div></div>
+      </label>
+      <label class="sched-radio" id="sched-weekday-lbl">
+        <input type="radio" name="sched" value="weekday" onchange="setSchedMode('weekday')">
+        <div><div class="sched-rl">Weekdays / Weekends</div><div class="sched-rs">Mon–Fri vs Sat–Sun</div></div>
+      </label>
+      <label class="sched-radio" id="sched-custom-lbl">
+        <input type="radio" name="sched" value="custom" onchange="setSchedMode('custom')">
+        <div><div class="sched-rl">Custom per day</div><div class="sched-rs">Different goal each day</div></div>
+      </label>
+    </div>
+    <div id="goal-same">
+      <div class="hm-row">
+        <input class="hm-inp" type="number" id="g-same-h" min="0" max="23" placeholder="0" oninput="validateGoal('same',0)">
+        <span class="hm-lbl">h</span>
+        <input class="hm-inp" type="number" id="g-same-m" min="0" max="59" placeholder="0" oninput="validateGoal('same',0)">
+        <span class="hm-lbl">min</span>
+        <span class="rem-hint" id="rem-same"></span>
+      </div>
+      <div class="err-msg" id="err-same">Exceeds 24h limit</div>
+    </div>
+    <div id="goal-weekday" style="display:none">
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">Weekdays (Mon–Fri)</p>
+      <div class="hm-row">
+        <input class="hm-inp" type="number" id="g-wd-h" min="0" max="23" placeholder="0" oninput="validateGoal('wd',0)">
+        <span class="hm-lbl">h</span>
+        <input class="hm-inp" type="number" id="g-wd-m" min="0" max="59" placeholder="0" oninput="validateGoal('wd',0)">
+        <span class="hm-lbl">min</span>
+        <span class="rem-hint" id="rem-wd"></span>
+      </div>
+      <div class="err-msg" id="err-wd">Exceeds 24h limit for weekdays</div>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;margin-top:4px">Weekends (Sat–Sun)</p>
+      <div class="hm-row">
+        <input class="hm-inp" type="number" id="g-we-h" min="0" max="23" placeholder="0" oninput="validateGoal('we',5)">
+        <span class="hm-lbl">h</span>
+        <input class="hm-inp" type="number" id="g-we-m" min="0" max="59" placeholder="0" oninput="validateGoal('we',5)">
+        <span class="hm-lbl">min</span>
+        <span class="rem-hint" id="rem-we"></span>
+      </div>
+      <div class="err-msg" id="err-we">Exceeds 24h limit for weekends</div>
+    </div>
+    <div id="goal-custom" style="display:none">
+      <div class="day-goals" id="day-goals-inputs"></div>
+    </div>
+    <hr class="modal-divider">
+    <p style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Sub-categories</p>
+    <div class="subs-chips" id="modal-subs"></div>
+    <div class="add-sub-row">
+      <input class="add-sub-input" id="modal-sub-input" placeholder="Add sub-category" onkeydown="if(event.key==='Enter')modalAddSub()">
+      <button class="add-sub-btn" onclick="modalAddSub()">Add</button>
+    </div>
+    <div class="modal-btns">
+      <button class="cancel" onclick="closeModal('modal-edit')">Cancel</button>
+      <button class="confirm" id="save-btn" onclick="confirmEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-add-cat" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <div class="modal-title">New category</div>
+    <div class="modal-sub">Name and default daily goal</div>
+    <input style="width:100%;padding:10px 12px;border:0.5px solid var(--border-md);border-radius:var(--radius-md);font-size:14px;background:var(--bg-primary);color:var(--text-primary);font-family:inherit;margin-bottom:10px" id="new-cat-name" placeholder="Category name">
+    <div class="hm-row">
+      <input class="hm-inp" type="number" id="new-cat-h" min="0" max="23" placeholder="0">
+      <span class="hm-lbl">h</span>
+      <input class="hm-inp" type="number" id="new-cat-m" min="0" max="59" placeholder="30">
+      <span class="hm-lbl">min</span>
+    </div>
+    <div class="modal-btns">
+      <button class="cancel" onclick="closeModal('modal-add-cat')">Cancel</button>
+      <button class="confirm" onclick="confirmAddCat()">Add</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
