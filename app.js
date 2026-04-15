@@ -250,7 +250,8 @@ function updateReminder(v){state.reminderSteps=parseInt(v);document.getElementBy
 // ── Edit modal ────────────────────────────────────────────────────────────────
 function openEdit(id){
   state.editingCatId=id;const c=getCat(id);
-  document.getElementById('edit-title').textContent=c.name;
+  document.getElementById('edit-title').textContent='Edit';
+  document.getElementById('edit-cat-name').value=c.name;
   document.getElementById('save-btn').disabled=false;
   modalTempSubs=[...(c.subs||[])];renderModalSubs();
   const mode=(c.schedule&&c.schedule.mode)||'same';
@@ -351,6 +352,8 @@ function archiveGoal(cat){
 }
 function confirmEdit(){
   const c=getCat(state.editingCatId);
+  const newName=document.getElementById('edit-cat-name').value.trim();
+  if(newName)c.name=newName;
   archiveGoal(c);c.subs=[...modalTempSubs];
   if(schedMode==='same'){c.goal=hmToMins(document.getElementById('g-same-h').value,document.getElementById('g-same-m').value);c.schedule={mode:'same'};}
   else if(schedMode==='weekday'){const wd=hmToMins(document.getElementById('g-wd-h').value,document.getElementById('g-wd-m').value),we=hmToMins(document.getElementById('g-we-h').value,document.getElementById('g-we-m').value);c.schedule={mode:'weekday',weekday:wd,weekend:we};c.goal=wd;}
