@@ -350,6 +350,13 @@ function archiveGoal(cat){
   const last=cat.goalHistory[cat.goalHistory.length-1];
   if(!last||JSON.stringify(last)!==JSON.stringify(entry))cat.goalHistory.push(entry);
 }
+function deleteCategory(){
+  const c=getCat(state.editingCatId);
+  if(!confirm(`Delete "${c.name}"? This cannot be undone.`))return;
+  state.categories=state.categories.filter(x=>x.id!==state.editingCatId);
+  if(state.selectedCat===state.editingCatId)state.selectedCat=null;
+  saveState();renderCatGrid();renderSettingsCats();renderDashboard();closeModal('modal-edit');
+}
 function confirmEdit(){
   const c=getCat(state.editingCatId);
   const newName=document.getElementById('edit-cat-name').value.trim();
